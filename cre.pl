@@ -5,12 +5,14 @@
 use warnings;
 use strict;
 use Term::ANSIColor;
+use Getopt::Long;
 
 #-----------------------------------------------------------------------------
 
 my @colours = qw(red green yellow blue magenta cyan);
 my $bright = 1;
 my $ignore_case = 0;
+my $help = 0;
 
 #-----------------------------------------------------------------------------
 # usage() {{{
@@ -18,10 +20,14 @@ my $ignore_case = 0;
 sub usage {
   my ($exit) = @_;
 
-  printf "Usage: %s [options] regexp [file ...]\n", (split m[/], $0)[-1];
-  # -b, --bright
-  # -d, --dark
-  # -i, --ignore-case
+  printf "Usage:\n";
+  printf "  %s [options] regexp [file ...]\n", (split m[/], $0)[-1];
+  printf "  %s [options] -e re1 -e re2 ... [file ...]\n", (split m[/], $0)[-1];
+  printf "\n";
+  printf "Recognized options:\n";
+  printf "  -b, --bright        use bright colours for highlighting (default)\n";
+  printf "  -d, --dark          use dark colours for highlighting\n";
+  printf "  -i, --ignore-case   case-insensitive match\n";
   exit ($exit || 0);
 }
 
@@ -30,46 +36,22 @@ sub usage {
 # parse command line options {{{
 
 my @regexps;
-my @files;
 
-for (my $i = 0; $i < @ARGV; ++$i) {
-  if ($ARGV[$i] eq '--') {
-    @ARGV = @ARGV[$i + 1 .. $#ARGV];
-    last;
-  }
-  if ($ARGV[$i] !~ /^-/) {
-    push @files, $ARGV[$i];
-    next;
-  }
+my $result = GetOptions(
+  'e=s@'          => \@regexps,
+  'ignore-case|i' => \$ignore_case,
+  'bright|b'      => \$bright,
+  'dark|d'        => sub { $bright = 0 },
+  'h|help'        => \$help,
+);
 
-  # $ARGV[$i] =~ /^-/
-
-  if ($ARGV[$i] eq '-e') {
-    if (++$i >= @ARGV) {
-      printf STDERR "Missing argument to -e\n";
-      usage(1);
-    }
-    push @regexps, $ARGV[$i];
-  } elsif ($ARGV[$i] eq '-i' || $ARGV[$i] eq '--ignore-case') {
-    $ignore_case = 1;
-  } elsif ($ARGV[$i] eq '-b' || $ARGV[$i] eq '--bright') {
-    $bright = 1;
-  } elsif ($ARGV[$i] eq '-d' || $ARGV[$i] eq '--dark') {
-    $bright = 0;
-  } elsif ($ARGV[$i] eq '-h' || $ARGV[$i] eq '--help') {
-    usage();
-  } else { # unknown option
-    printf STDERR "Unknown option: %s\n", $ARGV[$i];
-    usage(1);
-  }
+if ($help || !$result || (@regexps == 0 && @ARGV == 0)) {
+  usage($result ? 0 : 1);
 }
 
 if (@regexps == 0) {
-  if (@files == 0) {
-    usage();
-  } else {
-    push @regexps, shift @files;
-  }
+  # @ARGV > 1
+  push @regexps, shift @ARGV;
 }
 
 if (@regexps > @colours) {
@@ -78,8 +60,6 @@ if (@regexps > @colours) {
                 scalar @colours;
   usage(1);
 }
-
-@ARGV = @files; # for `<>' operator to work
 
 # }}}
 #-----------------------------------------------------------------------------
