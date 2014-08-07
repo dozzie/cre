@@ -1,4 +1,5 @@
-== cre, regexp match colourizer ==
+cre, regexp match colourizer
+============================
 
 cre is a simple text colourizer. It prints all it gets on STDIN (or in files
 provided as arguments), but for every regexp passed with `-e` option cre makes
@@ -13,7 +14,8 @@ cre uses PCRE syntax, or exactly, Perl's regexp syntax.
 
 cre requires Perl 5.10 to run.
 
-== Usage examples ==
+Usage examples
+--------------
 
     # find all "root" occurrences and mark them with red
     cre root /etc/passwd
@@ -22,7 +24,8 @@ cre requires Perl 5.10 to run.
     # be green
     cre -e /bin/zsh -e '/var/[^:]*' /etc/passwd
 
-== Contact ==
+Contact
+-------
 
 cre was written by Stanislaw Klekot `<dozzie at jarowit.net>`.
 The primary distribution point is <http://dozzie.jarowit.net/git/cre.git>,
