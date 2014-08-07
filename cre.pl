@@ -97,18 +97,8 @@ my $re = join "|", @named_re_groups;
 $re = ($ignore_case) ? qr/$re/i : qr/$re/;
 
 while (<>) {
-  s/$re/mkcolour()/eg;
+  s/$re/my ($c) = keys %+; color($c) . $+{$c} . color('reset')/eg;
   print;
-}
-
-#-----------------------------------------------------------------------------
-
-sub mkcolour {
-  for my $c (@colours) {
-    if ($+{$c}) {
-      return join "", color($c), $+{$c}, color('reset');
-    }
-  }
 }
 
 #-----------------------------------------------------------------------------
