@@ -10,7 +10,7 @@ use Getopt::Long;
 #-----------------------------------------------------------------------------
 
 my @colours = qw(red green yellow blue magenta cyan);
-my $bright = 1;
+my $brightness = "bold"; # "bold" or ""
 my $ignore_case = 0;
 my $help = 0;
 
@@ -40,8 +40,8 @@ my @regexps;
 my $result = GetOptions(
   'e=s@'          => \@regexps,
   'ignore-case|i' => \$ignore_case,
-  'bright|b'      => \$bright,
-  'dark|d'        => sub { $bright = 0 },
+  'bright|b'      => sub { $brightness = "bold" },
+  'dark|d'        => sub { $brightness = "" },
   'h|help'        => \$help,
 );
 
@@ -64,11 +64,6 @@ if (@regexps > @colours) {
 # }}}
 #-----------------------------------------------------------------------------
 
-if ($bright) {
-  # add "bright_" prefix
-  $_ = "bright_$_" for @colours;
-}
-
 # XXX: we're sure that @regexps <= @colours
 my @pairs = map { [$regexps[$_], $colours[$_]] } 0 .. $#regexps;
 
@@ -77,7 +72,7 @@ my $re = join "|", @named_re_groups;
 $re = ($ignore_case) ? qr/$re/i : qr/$re/;
 
 while (<>) {
-  s/$re/my ($c) = keys %+; color($c) . $+{$c} . color('reset')/eg;
+  s/$re/my ($c) = keys %+; color($c, $brightness) . $+{$c} . color('reset')/eg;
   print;
 }
 
