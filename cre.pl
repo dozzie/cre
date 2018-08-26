@@ -28,6 +28,12 @@ sub usage {
   printf "  -b, --bright        use bright colours for highlighting (default)\n";
   printf "  -d, --dark          use dark colours for highlighting\n";
   printf "  -i, --ignore-case   case-insensitive match\n";
+  printf "\n";
+  printf "In place of `-e regexp', a specific colours are also accepted:\n";
+  printf "  --red=regexp         --blue=regexp\n";
+  printf "  --green=regexp       --magenta=regexp\n";
+  printf "  --yellow=regexp      --cyan=regexp\n";
+  printf "Each colour can be specified multiple times.\n";
   exit ($exit || 0);
 }
 
@@ -37,8 +43,22 @@ sub usage {
 
 my @regexps;
 
+sub check_re($) {
+  my ($re) = @_;
+
+  eval { qr/$re/ };
+  die "Invalid regexp: $re\n" if $@;
+}
+my $cs = 0; # automatic colour selector
+
 my $result = GetOptions(
-  'e=s@'          => \@regexps,
+  'e=s'       => sub { check_re $_[1]; push @regexps, [$_[1], $colours[($cs++) % @colours]]; },
+  'red=s'     => sub { check_re $_[1]; push @regexps, [$_[1], "$_[0]"]; },
+  'green=s'   => sub { check_re $_[1]; push @regexps, [$_[1], "$_[0]"]; },
+  'yellow=s'  => sub { check_re $_[1]; push @regexps, [$_[1], "$_[0]"]; },
+  'blue=s'    => sub { check_re $_[1]; push @regexps, [$_[1], "$_[0]"]; },
+  'magenta=s' => sub { check_re $_[1]; push @regexps, [$_[1], "$_[0]"]; },
+  'cyan=s'    => sub { check_re $_[1]; push @regexps, [$_[1], "$_[0]"]; },
   'ignore-case|i' => \$ignore_case,
   'bright|b'      => sub { $brightness = "bold" },
   'dark|d'        => sub { $brightness = "" },
@@ -46,33 +66,45 @@ my $result = GetOptions(
 );
 
 if ($help || !$result || (@regexps == 0 && @ARGV == 0)) {
-  usage($result ? 0 : 1);
+  if ($result) {
+    usage(0);
+  } else {
+    select STDERR;
+    usage(1);
+  }
 }
 
 if (@regexps == 0) {
   # @ARGV > 1
-  push @regexps, shift @ARGV;
-}
-
-if (@regexps > @colours) {
-  # TODO: how to allow more than 6 patterns?
-  printf STDERR "Can't (currently) handle more than %d patterns\n",
-                scalar @colours;
-  usage(1);
+  push @regexps, ["red", shift @ARGV];
 }
 
 # }}}
 #-----------------------------------------------------------------------------
 
-# XXX: we're sure that @regexps <= @colours
-my @pairs = map { [$regexps[$_], $colours[$_]] } 0 .. $#regexps;
-
-my @named_re_groups = map { sprintf "(?<%s>%s)", $_->[1], $_->[0] } @pairs;
-my $re = join "|", @named_re_groups;
+# format string will have structure: "(((%s)|%s)|%s)"
+my $re_format = ("(" x @regexps) . (join ")|", ("%s") x @regexps) . ")";
+my $re = sprintf $re_format, map { $_->[0] } @regexps;
 $re = ($ignore_case) ? qr/$re/i : qr/$re/;
 
+# an array with regexp colours (indices match capture groups numbers, so
+# $rec[0] stays unused and the first regexp is the last element)
+my @rec = (undef, reverse map { $_->[1] } @regexps);
+
+sub match_colour() {
+  # find the last capture group that represents passed regexps that is
+  # defined; it's defined latest, so it's the inner-most, i.e. most specific
+  # at least `$-[1]' will be defined, since it covers the whole match
+  my $i = $#rec;
+  --$i until defined $-[$i];
+
+  return color($rec[$i], $brightness) .
+         substr($_, $-[$i], $+[$i] - $-[$i]) .
+         color("reset");
+}
+
 while (<>) {
-  s/$re/my ($c) = keys %+; color($c, $brightness) . $+{$c} . color('reset')/eg;
+  s/$re/match_colour()/eg;
   print;
 }
 
